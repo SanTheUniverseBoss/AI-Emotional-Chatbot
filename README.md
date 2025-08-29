@@ -1,15 +1,15 @@
 # AI-Emotional-Chatbot
-# Quick next steps after downloading the zip file :
-Unzip, open the backend folder and install deps:
-Run backend:
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload (from the backend directory)
-Serve frontend (recommended) and open in browser:
-cd frontend
-python -m http.server 5500
-Then
-Open http://127.0.0.1:5500/index.html
+# Quick next steps after downloading the zip file:
+  Unzip, open the backend folder and install deps:
+  Run backend:
+  cd backend
+  pip install -r requirements.txt
+  uvicorn main:app --reload (from the backend directory)
+  Serve frontend (recommended) and open in browser:
+  cd frontend
+  python -m http.server 5500
+  Then
+  Open http://127.0.0.1:5500/index.html
 ## AI Model Integration
 This project supports real AI models via Hugging Face 🤗.
 ### Requirements
