@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Emotional Chatbot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #ece5dd;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      height: 100vh;
+      padding-top: 20px;
+    }
+    #chat-container {
+      width: 500px;
+      border-radius: 12px;
+      background: #f7f7f7;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #messages {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      scroll-behavior: smooth;
+      height: 450px;
+      background: #e5ddd5;
+    }
+    .msg-wrapper {
+      display: flex;
+      align-items: flex-end;
+      margin: 6px 0;
+    }
+    .user-wrapper { justify-content: flex-end; }
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0 6px;
+      font-size: 18px;
+    }
+    .bubble {
+      padding: 10px 14px;
+      border-radius: 12px;
+      max-width: 70%;
+      line-height: 1.4;
+      position: relative;
+      font-size: 14px;
+      word-wrap: break-word;
+    }
+    .joy { background: #fff176; color: #000; }
+    .sadness { background: #90caf9; color: #000; }
+    .anger { background: #ef9a9a; color: #000; }
+    .fear { background: #b39ddb; color: #000; }
+    .neutral { background: #e0e0e0; color: #000; }
+    .user .bubble { background: #dcf8c6; }
+    .timestamp { font-size: 10px; color: #555; margin-left: 6px; align-self: flex-end; }
+    #input-area { display: flex; border-top: 1px solid #ccc; background: #f0f0f0; }
+    #input { flex: 1; padding: 12px; border: none; outline: none; font-size: 15px; }
+    #send { background: #128c7e; color: white; border: none; padding: 12px 20px; cursor: pointer; }
+    #send:hover { background: #075e54; }
+    .typing { font-style: italic; font-size: 14px; color: #555; margin: 5px 0; display: flex; align-items: center; }
+    .emotion-emoji { margin-left: 6px; }
+    #chart-container { padding: 10px; background: #fff; border-top: 1px solid #ccc; }
+    #emotion-chart { width: 100%; height: 100px; display: flex; align-items: flex-end; justify-content: space-around; }
+    .bar { width: 18%; background: #aaa; display: flex; justify-content: center; align-items: flex-end; color: #fff; font-size: 12px; border-radius: 4px 4px 0 0; }
+  </style>
+</head>
+<body>
+  <div id="chat-container">
+    <div id="messages"></div>
+    <div id="input-area">
+      <input id="input" type="text" placeholder="Type your message...">
+      <button id="send">Send</button>
+    </div>
+    <div id="chart-container">
+      <div id="emotion-chart"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://127.0.0.1:8000/chat";
+    const messagesDiv = document.getElementById("messages");
+    const input = document.getElementById("input");
+    const sendBtn = document.getElementById("send");
+    const chartDiv = document.getElementById("emotion-chart");
+
+    let history = [];
+    const emotionCounts = { joy:0, sadness:0, anger:0, fear:0, neutral:0 };
+
+    const emotionEmoji = { joy:"😄", sadness:"😢", anger:"😡", fear:"😟", neutral:"🙂" };
+    const emotionColor = { joy:"#fff176", sadness:"#90caf9", anger:"#ef9a9a", fear:"#b39ddb", neutral:"#e0e0e0" };
+
+    function updateChart() {
+      chartDiv.innerHTML = "";
+      for (let emo in emotionCounts) {
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        bar.style.height = (emotionCounts[emo]*20 + 10) + "px"; // simple scale
+        bar.style.background = emotionColor[emo];
+        bar.textContent = emo[0].toUpperCase();
+        chartDiv.appendChild(bar);
+      }
+    }
+
+    function addMessage(text, role, emotion=null) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "msg-wrapper " + (role==="user"?"user-wrapper":"");
+
+      const avatar = document.createElement("div");
+      avatar.className = "avatar";
+      avatar.textContent = role==="user"?"🤵":"🤖";
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble " + (role==="bot"&&emotion?emotion.toLowerCase():"");
+      bubble.textContent = text;
+
+      if (role==="bot" && emotion) {
+        const span = document.createElement("span");
+        span.className = "emotion-emoji";
+        span.textContent = emotionEmoji[emotion.toLowerCase()] || "🙂";
+        bubble.appendChild(span);
+        // count emotion
+        emotionCounts[emotion.toLowerCase()]++;
+        updateChart();
+      }
+
+      const time = document.createElement("div");
+      time.className = "timestamp";
+      const now = new Date();
+      time.textContent = now.getHours().toString().padStart(2,'0')+":"+now.getMinutes().toString().padStart(2,'0');
+      bubble.appendChild(time);
+
+      if (role==="user") { wrapper.appendChild(bubble); wrapper.appendChild(avatar); }
+      else { wrapper.appendChild(avatar); wrapper.appendChild(bubble); }
+
+      messagesDiv.appendChild(wrapper);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      // save to localStorage
+      const saved = JSON.parse(localStorage.getItem("chatHistory")||"[]");
+      saved.push({ text, role, emotion });
+      localStorage.setItem("chatHistory", JSON.stringify(saved));
+    }
+
+    function showTyping() {
+      const typingDiv = document.createElement("div");
+      typingDiv.className = "typing";
+      typingDiv.id = "typing-indicator";
+      typingDiv.textContent = "🤖 Bot is typing...";
+      messagesDiv.appendChild(typingDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function hideTyping() { const t = document.getElementById("typing-indicator"); if(t)t.remove(); }
+
+    async function sendMessage() {
+      const text = input.value.trim();
+      if(!text) return;
+      addMessage(text, "user");
+      input.value = "";
+      showTyping();
+
+      const payload = { user_id:"demo", text, history };
+
+      try {
+        const res = await fetch(API_URL, {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        hideTyping();
+        addMessage(data.reply, "bot", data.emotion.label);
+        history.push({ role:"user", text });
+        history.push({ role:"assistant", text:data.reply });
+      } catch(err){
+        console.error(err);
+        hideTyping();
+        addMessage("⚠️ Server error.", "bot");
+      }
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    input.addEventListener("keypress", e=>{ if(e.key==="Enter") sendMessage(); });
+
+    // load history from localStorage
+    const savedHistory = JSON.parse(localStorage.getItem("chatHistory")||"[]");
+    savedHistory.forEach(m=>{
+      addMessage(m.text, m.role, m.emotion);
+      if(m.role==="bot" && m.emotion) emotionCounts[m.emotion.toLowerCase()]++;
+    });
+    updateChart();
+  </script>
+</body>
+</html>
